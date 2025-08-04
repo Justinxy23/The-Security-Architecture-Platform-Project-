@@ -1,0 +1,237 @@
+# SecureArch Platform Makefile
+# By Justin Weaver
+
+.PHONY: help install-all dev build test deploy clean security-scan
+
+# Default target
+help:
+	@echo "SecureArch Platform - Available Commands:"
+	@echo "----------------------------------------"
+	@echo "make install-all    - Install all dependencies"
+	@echo "make dev           - Start development environment"
+	@echo "make build         - Build production images"
+	@echo "make test          - Run all tests"
+	@echo "make migrate       - Run database migrations"
+	@echo "make security-scan - Run security scans"
+	@echo "make deploy        - Deploy to Kubernetes"
+	@echo "make clean         - Clean up containers and volumes"
+	@echo "make logs          - View application logs"
+	@echo "make monitor       - Open monitoring dashboards"
+
+# Install all dependencies
+install-all:
+	@echo "🔧 Installing Backend Dependencies..."
+	cd backend && pip install -r requirements.txt
+	@echo "🔧 Installing Frontend Dependencies..."
+	cd frontend && npm install
+	@echo "🔧 Installing iOS Dependencies..."
+	cd mobile && pod install
+	@echo "✅ All dependencies installed!"
+
+# Development environment
+dev:
+	@echo "🚀 Starting development environment..."
+	docker-compose up -d
+	@echo "✅ Development environment started!"
+	@echo "📡 API: http://localhost:8000"
+	@echo "🌐 Frontend: http://localhost:3000"
+	@echo "📊 Kibana: http://localhost:5601"
+	@echo "📈 Grafana: http://localhost:3001"
+
+# Build production images
+build:
+	@echo "🏗️  Building production images..."
+	docker-compose build --no-cache
+	@echo "✅ Production images built!"
+
+# Run all tests
+test:
+	@echo "🧪 Running Backend Tests..."
+	cd backend && pytest -v --cov=. --cov-report=html
+	@echo "🧪 Running Frontend Tests..."
+	cd frontend && npm test -- --coverage
+	@echo "🧪 Running Security Tests..."
+	make security-scan
+	@echo "✅ All tests completed!"
+
+# Database migrations
+migrate:
+	@echo "🗄️  Running database migrations..."
+	docker-compose exec backend alembic upgrade head
+	@echo "✅ Migrations completed!"
+
+# Security scanning
+security-scan:
+	@echo "🔐 Running security scans..."
+	@echo "🔍 Scanning Python dependencies..."
+	cd backend && safety check && bandit -r . -ll
+	@echo "🔍 Scanning Node dependencies..."
+	cd frontend && npm audit
+	@echo "🔍 Scanning Docker images..."
+	docker-compose run --rm backend trivy image securearch-backend:latest
+	@echo "🔍 Running OWASP ZAP scan..."
+	docker run -t owasp/zap2docker-stable zap-baseline.py -t http://localhost:3000
+	@echo "✅ Security scans completed!"
+
+# Deploy to Kubernetes
+deploy:
+	@echo "🚀 Deploying to Kubernetes..."
+	kubectl apply -f infrastructure/kubernetes/namespace.yaml
+	kubectl apply -f infrastructure/kubernetes/
+	@echo "✅ Deployment completed!"
+	kubectl get pods -n securearch
+
+# Clean up
+clean:
+	@echo "🧹 Cleaning up..."
+	docker-compose down -v
+	docker system prune -f
+	@echo "✅ Cleanup completed!"
+
+# View logs
+logs:
+	@echo "📋 Viewing application logs..."
+	docker-compose logs -f
+
+# Open monitoring dashboards
+monitor:
+	@echo "📊 Opening monitoring dashboards..."
+	@echo "Opening Grafana..."
+	open http://localhost:3001
+	@echo "Opening Kibana..."
+	open http://localhost:5601
+	@echo "Opening Prometheus..."
+	open http://localhost:9090
+
+# Backend specific commands
+backend-shell:
+	docker-compose exec backend /bin/bash
+
+backend-format:
+	cd backend && black . && isort .
+
+backend-lint:
+	cd backend && flake8 . && mypy .
+
+# Frontend specific commands
+frontend-shell:
+	docker-compose exec frontend /bin/sh
+
+frontend-format:
+	cd frontend && npm run format
+
+frontend-lint:
+	cd frontend && npm run lint
+
+# Database commands
+db-shell:
+	docker-compose exec postgres psql -U securearch -d securearch_db
+
+db-backup:
+	@echo "💾 Backing up database..."
+	docker-compose exec postgres pg_dump -U securearch securearch_db > backups/db_backup_$(shell date +%Y%m%d_%H%M%S).sql
+	@echo "✅ Database backed up!"
+
+db-restore:
+	@echo "💾 Restoring database from latest backup..."
+	docker-compose exec -T postgres psql -U securearch securearch_db < $(shell ls -t backups/*.sql | head -1)
+	@echo "✅ Database restored!"
+
+# Generate API documentation
+docs:
+	@echo "📚 Generating API documentation..."
+	cd backend && python -m mkdocs build
+	@echo "✅ Documentation generated at backend/site/"
+
+# Performance testing
+perf-test:
+	@echo "⚡ Running performance tests..."
+	docker run --rm -v $(PWD)/tests/performance:/scripts -v $(PWD)/tests/results:/results loadimpact/k6 run /scripts/load-test.js
+	@echo "✅ Performance tests completed!"
+
+# Create new migration
+new-migration:
+	@echo "🗄️  Creating new migration..."
+	docker-compose exec backend alembic revision --autogenerate -m "$(MSG)"
+	@echo "✅ Migration created!"
+
+# Initialize project (first time setup)
+init:
+	@echo "🎯 Initializing SecureArch Platform..."
+	@echo "Creating necessary directories..."
+	mkdir -p logs backups infrastructure/nginx/ssl tests/performance tests/results
+	@echo "Copying environment template..."
+	cp .env.example .env
+	@echo "Generating secret keys..."
+	@python3 -c "import secrets; print(f'SECRET_KEY={secrets.token_urlsafe(32)}')" >> .env
+	@echo "Installing dependencies..."
+	make install-all
+	@echo "Starting services..."
+	make dev
+	@echo "Running initial migrations..."
+	sleep 10 && make migrate
+	@echo "✅ SecureArch Platform initialized successfully!"
+	@echo "🌟 Access the platform at http://localhost:3000"
+
+# Health check
+health:
+	@echo "🏥 Checking service health..."
+	@curl -s http://localhost:8000/api/v1/health | python3 -m json.tool
+	@echo ""
+	@docker-compose ps
+
+# Generate self-signed SSL certificate for local development
+ssl-cert:
+	@echo "🔐 Generating self-signed SSL certificate..."
+	openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+		-keyout infrastructure/nginx/ssl/securearch.key \
+		-out infrastructure/nginx/ssl/securearch.crt \
+		-subj "/C=US/ST=Georgia/L=Atlanta/O=SecureArch/CN=localhost"
+	@echo "✅ SSL certificate generated!"
+
+# Run specific service
+run-service:
+	@docker-compose up -d $(SERVICE)
+	@docker-compose logs -f $(SERVICE)
+
+# Stop all services
+stop:
+	@echo "🛑 Stopping all services..."
+	docker-compose stop
+	@echo "✅ All services stopped!"
+
+# Restart all services
+restart:
+	@echo "🔄 Restarting all services..."
+	docker-compose restart
+	@echo "✅ All services restarted!"
+
+# Show running containers
+ps:
+	@docker-compose ps
+
+# Tail logs for specific service
+logs-service:
+	@docker-compose logs -f $(SERVICE)
+
+# Update dependencies
+update-deps:
+	@echo "📦 Updating dependencies..."
+	cd backend && pip install --upgrade -r requirements.txt
+	cd frontend && npm update
+	@echo "✅ Dependencies updated!"
+
+# Generate project statistics
+stats:
+	@echo "📊 Project Statistics:"
+	@echo "---------------------"
+	@echo "Backend Lines of Code:"
+	@find backend -name "*.py" -type f | xargs wc -l | tail -1
+	@echo "Frontend Lines of Code:"
+	@find frontend/src -name "*.tsx" -o -name "*.ts" | xargs wc -l | tail -1
+	@echo "Swift Lines of Code:"
+	@find mobile -name "*.swift" | xargs wc -l | tail -1
+	@echo "Total Commits:"
+	@git rev-list --all --count
+	@echo "Contributors:"
+	@git shortlog -sn
