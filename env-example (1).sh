@@ -1,0 +1,158 @@
+# SecureArch Platform Environment Configuration
+# Copy this file to .env and update with your values
+
+# Application
+DEBUG=True
+SECRET_KEY=your-secret-key-here-generate-with-openssl-rand-hex-32
+API_HOST=0.0.0.0
+API_PORT=8000
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:80
+
+# Database
+DB_USER=securearch
+DB_PASSWORD=SecureArch2025!
+DB_NAME=securearch_db
+DB_HOST=localhost
+DB_PORT=5432
+DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+
+# Redis
+REDIS_PASSWORD=RedisSecure2025!
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_URL=redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0
+
+# Celery
+CELERY_BROKER_URL=${REDIS_URL}
+CELERY_RESULT_BACKEND=${REDIS_URL}
+
+# Security
+JWT_SECRET_KEY=${SECRET_KEY}
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+JWT_REFRESH_TOKEN_EXPIRE_DAYS=7
+BCRYPT_LOG_ROUNDS=12
+
+# AWS Configuration (Optional)
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=us-east-1
+AWS_S3_BUCKET=securearch-assets
+
+# Azure Configuration (Optional)
+AZURE_TENANT_ID=
+AZURE_CLIENT_ID=
+AZURE_CLIENT_SECRET=
+AZURE_SUBSCRIPTION_ID=
+
+# Email Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=noreply@securearch.com
+SMTP_TLS=True
+
+# Slack Integration (Optional)
+SLACK_WEBHOOK_URL=
+SLACK_BOT_TOKEN=
+
+# Twilio Integration (Optional)
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_NUMBER=
+
+# Sentry Error Tracking (Optional)
+SENTRY_DSN=
+
+# Elasticsearch
+ELASTICSEARCH_HOST=localhost
+ELASTICSEARCH_PORT=9200
+ELASTICSEARCH_USER=elastic
+ELASTICSEARCH_PASSWORD=
+
+# Monitoring
+PROMETHEUS_PORT=9090
+GRAFANA_PASSWORD=admin
+
+# Frontend Configuration
+REACT_APP_API_URL=http://localhost:8000
+REACT_APP_WS_URL=ws://localhost:8000
+REACT_APP_GOOGLE_ANALYTICS_ID=
+REACT_APP_SENTRY_DSN=
+
+# iOS App Configuration
+IOS_BUNDLE_IDENTIFIER=com.securearch.ios
+IOS_APP_STORE_ID=
+IOS_TEAM_ID=
+
+# Feature Flags
+ENABLE_MFA=True
+ENABLE_SSO=False
+ENABLE_API_RATE_LIMITING=True
+ENABLE_AUDIT_LOGGING=True
+ENABLE_THREAT_INTELLIGENCE=True
+ENABLE_ML_DETECTION=False
+
+# Rate Limiting
+RATE_LIMIT_PER_MINUTE=100
+RATE_LIMIT_PER_HOUR=1000
+
+# Scanning Configuration
+SCAN_TIMEOUT_SECONDS=3600
+MAX_CONCURRENT_SCANS=5
+SCAN_RETRY_ATTEMPTS=3
+
+# SSL/TLS
+SSL_CERT_PATH=infrastructure/nginx/ssl/securearch.crt
+SSL_KEY_PATH=infrastructure/nginx/ssl/securearch.key
+
+# Docker Registry (for production)
+DOCKER_REGISTRY=
+DOCKER_USERNAME=
+DOCKER_PASSWORD=
+
+# Kubernetes Configuration
+K8S_NAMESPACE=securearch
+K8S_CLUSTER_NAME=securearch-cluster
+
+# Backup Configuration
+BACKUP_ENABLED=True
+BACKUP_RETENTION_DAYS=30
+BACKUP_S3_BUCKET=securearch-backups
+
+# Third-party API Keys
+VIRUSTOTAL_API_KEY=
+SHODAN_API_KEY=
+NIST_NVD_API_KEY=
+MITRE_ATT&CK_API_KEY=
+
+# Development Tools
+JUPYTER_TOKEN=
+PGADMIN_DEFAULT_EMAIL=admin@securearch.com
+PGADMIN_DEFAULT_PASSWORD=admin
+
+# Compliance Frameworks
+ENABLE_CIS_CHECKS=True
+ENABLE_NIST_CHECKS=True
+ENABLE_ISO27001_CHECKS=True
+ENABLE_PCI_DSS_CHECKS=False
+ENABLE_HIPAA_CHECKS=False
+
+# Machine Learning Models
+ML_MODEL_PATH=models/
+ML_THREAT_DETECTION_THRESHOLD=0.85
+ML_ANOMALY_DETECTION_ENABLED=False
+
+# Notification Preferences
+CRITICAL_ALERT_CHANNELS=email,slack,sms
+HIGH_ALERT_CHANNELS=email,slack
+MEDIUM_ALERT_CHANNELS=email
+LOW_ALERT_CHANNELS=email
+
+# Performance Tuning
+MAX_WORKERS=4
+WORKER_CONNECTIONS=1000
+KEEPALIVE_TIMEOUT=65
+DB_POOL_SIZE=20
+DB_MAX_OVERFLOW=40
